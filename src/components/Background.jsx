@@ -1,4 +1,4 @@
-import React from "react";
+ 
 import { useRef, useState, useEffect } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -50,38 +50,60 @@ const Background = () => {
 
   const savePassword = async () => {
     if (form.site.length > 3 && form.username.length > 3 && form.password.length > 3) {
-
-      // If any such id exists in the db, delete it 
-      await fetch("http://localhost:3000/", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({id:form.id }) })
-
-      setpasswordArray([...passwordArray, { ...form, id: uuidv4() }])
-      await fetch("http://localhost:3000/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, id: uuidv4() }) })
-
-      // Otherwise clear the form and show toast
-      setform({ site: "", username: "", password: "" })
-      toast('Password saved!', {
-        position: "top-right",
-        autoClose: 2000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+      try {
+        // If editing, delete the existing entry from the database
+        if (form.id) {
+          await fetch("http://localhost:3000", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: form.id }),
+          });
+  
+          // Remove the previous password from the local state
+          setpasswordArray(passwordArray.filter((item) => item.id !== form.id));
+        }
+  
+        // Generate a new ID and save the updated or new password
+        const newId = uuidv4();
+        const updatedForm = { ...form, id: newId };
+  
+        setpasswordArray([...passwordArray, updatedForm]);
+  
+        await fetch("http://localhost:3000/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedForm),
+        });
+  
+        // Clear the form and show a success toast
+        setform({ site: "", username: "", password: "" });
+        toast("Password saved!", {
+          position: "top-right",
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      } catch (error) {
+        console.error("Error saving password:", error);
+        toast("An error occurred while saving!", { theme: "dark" });
+      }
+    } else {
+      toast("Error: Password not saved! Please ensure all fields have at least 4 characters.");
     }
-    else {
-      toast('Error: Password not saved!');
-    }
-  }
-
-
-  const editPassword = async(id) => {
+  };
+  
+  const editPassword = (id) => {
     console.log("Editing password with", id);
-    setform({ ...passwordArray.filter(i => i.id === id)[0], id: id })
-    setpasswordArray(passwordArray.filter(item => item.id !== id));
-  }
-
+    const itemToEdit = passwordArray.find((item) => item.id === id);
+    if (itemToEdit) {
+      setform(itemToEdit);
+      setpasswordArray(passwordArray.filter((item) => item.id !== id));
+    }
+  };
 
   const deletePassword = async (id) => {
     console.log("Deleting password with id ", id)
